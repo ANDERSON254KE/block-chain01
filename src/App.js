@@ -1,95 +1,135 @@
 import logo from './logo.svg';
 import './App.css';
-import { useState } from "react";
+import { useState } from 'react';
+import Web3 from 'web3';
 
-// import the web3 module
-import { Web3 } from "web3";
-
-//import the contract addess and the ABI
-const ADDRESS = "0x5B8ED1bF34F3FAde4cB295e6602d4D8A29c9eeaB";
-const ABI = [{ "inputs": [{ "internalType": "uint256", "name": "_startingPoint", "type": "uint256" }, { "internalType": "string", "name": "_startingMessage", "type": "string" }], "stateMutability": "nonpayable", "type": "constructor" }, { "inputs": [], "name": "decreaseNumber", "outputs": [], "stateMutability": "nonpayable", "type": "function" }, { "inputs": [], "name": "getNumber", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" }, { "inputs": [], "name": "increaseNumber", "outputs": [], "stateMutability": "nonpayable", "type": "function" }, { "inputs": [], "name": "message", "outputs": [{ "internalType": "string", "name": "", "type": "string" }], "stateMutability": "view", "type": "function" }, { "inputs": [{ "internalType": "string", "name": "newMessage", "type": "string" }], "name": "setMessage", "outputs": [], "stateMutability": "nonpayable", "type": "function" }];
-
+// Contract address and ABI
+const CONTRACT_ADDRESS = "0x55637c93b3d2e6373fb5b1e4140505c27bf709f8";
+const CONTRACT_ABI = [
+  {
+    "inputs": [],
+    "name": "decreaseNumber",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "increaseNumber",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "newMessage",
+        "type": "string"
+      }
+    ],
+    "name": "setMessage",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_startingPoint",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "_startingMessage",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "getNumber",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "message",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+];
 
 function App() {
   const [number, setNumber] = useState("none");
   const [currentMessage, setCurrentMessage] = useState("none");
   const [newMessage, setNewMessage] = useState("");
-
-  //initilise the web3 object
+  
   const web3 = new Web3(window.ethereum);
+  const contract = new web3.eth.Contract(CONTRACT_ABI, CONTRACT_ADDRESS);
 
-  //initialise the contract ABI and ADDRESS
-  const myContract = new web3.eth.Contract(ABI, ADDRESS);
+  // Fetch number from contract
+  const fetchNumber = async () => {
+    const result = await contract.methods.getNumber().call();
+    setNumber(result.toString());
+  };
 
-  //reading functions
-  //number
-  async function getNumber() {
-    const result = await myContract.methods.getNumber().call();
-
-    setNumber(result.toString())
-  }
-
-  //message
-  async function getMessage() {
-    const message = await myContract.methods.message().call();
+  // Fetch message from contract
+  const fetchMessage = async () => {
+    const message = await contract.methods.message().call();
     setCurrentMessage(message);
-  }
+  };
 
-  //writing functions
-  //number
-  //increasing the number
-  async function increaseNumber() {
-    //connectint the account i.e the wallet
-    const accountsConnected = await web3.eth.requestAccounts();
+  // Increase or decrease number
+  const updateNumber = async (methodName) => {
+    const accounts = await web3.eth.requestAccounts();
+    await contract.methods[methodName]().send({ from: accounts[0] });
+    fetchNumber();
+  };
 
-    const tx = await myContract.methods.increaseNumber().send({ from: accountsConnected[0] });
-
-    getNumber();
-  }
-  //decreasing the number
-  async function decreaseNumber() {
-    const accountsPresent = await web3.eth.requestAccounts();
-
-    const transact = await myContract.methods.decreaseNumber().send({ from: accountsPresent[0] });
-
-    getNumber();
-  }
-
-  //message
-  async function updateMessage() {
-    const connetedAccounts = await web3.eth.requestAccounts();
-
-    const Transaction = await myContract.methods.setMessage(newMessage).send({ from: connetedAccounts[0] });
-
-    getMessage();
-  }
+  // Update message on contract
+  const updateMessage = async () => {
+    const accounts = await web3.eth.requestAccounts();
+    await contract.methods.setMessage(newMessage).send({ from: accounts[0] });
+    fetchMessage();
+  };
 
   return (
     <div className="App">
       <header className="App-header">
         <img src={logo} className="App-logo" alt="logo" />
-        <button onClick={getNumber}>Get number</button>
-        <br />
-        <button onClick={increaseNumber}>Increase Number</button>
-        <br />
-        <button onClick={decreaseNumber}>Decrease Number</button>
-        <br />
+        <button onClick={fetchNumber}>Get Number</button>
+        <button onClick={() => updateNumber("increaseNumber")}>Increase Number</button>
+        <button onClick={() => updateNumber("decreaseNumber")}>Decrease Number</button>
         <p>Number: {number}</p>
-        <br />
-        <button onClick={getMessage}>Get message</button>
-        <br />
-        <p>Message: {currentMessage} </p>
-        <br />
+        
+        <button onClick={fetchMessage}>Get Message</button>
+        <p>Message: {currentMessage}</p>
+        
         <input
           type="text"
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
-          placeholder="Enter new Message"
+          placeholder="Enter new message"
         />
-        <br />
         <button onClick={updateMessage}>Update Message</button>
-        <br />
-
       </header>
     </div>
   );
